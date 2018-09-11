@@ -16,6 +16,7 @@ end
 
 local function check_if_exists(id)
   local m_data = file.Read("modern_workshop_id_list.txt")
+  if (!m_data) then return false end
   return string.find(m_data, id)
 end
 

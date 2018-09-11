@@ -22,8 +22,16 @@ end
 
 local function handle_workshop_item(m_workshop_tbl, m_workshop_index)
   local file_id = 0
+
+  local m_downloaded_already = table.HasValue(m_downloaded_list, m_workshop_tbl[m_workshop_index])
+  if (m_downloaded_already) then
+    m_workshop_index = m_workshop_index + 1
+    if (!m_workshop_tbl[m_workshop_index] || !tonumber(m_workshop_tbl[m_workshop_index])) then return end
+    handle_workshop_item(m_workshop_tbl, m_workshop_index)
+  end
+
   if (m_workshop_tbl[m_workshop_index] && tonumber(m_workshop_tbl[m_workshop_index])) then
-    if (!table.HasValue(m_downloaded_list, m_workshop_tbl[m_workshop_index])) then
+    if (!m_downloaded_already) then
       steamworks.FileInfo( m_workshop_tbl[m_workshop_index], function( m_result )
         if (!m_result || !istable(m_result)) then return end
         m_current_download_info = m_result
@@ -38,7 +46,7 @@ local function handle_workshop_item(m_workshop_tbl, m_workshop_index)
     end
   end
   m_workshop_index = m_workshop_index + 1
-  timer.Simple(1.5, function() notification.Kill( "m_file_download"..file_id ) file_id = 0 if (!m_workshop_tbl[m_workshop_index] || !tonumber(m_workshop_tbl[m_workshop_index])) then return end handle_workshop_item(m_workshop_tbl, m_workshop_index) end)
+  timer.Simple(2, function() notification.Kill( "m_file_download"..file_id ) file_id = 0 if (!m_workshop_tbl[m_workshop_index] || !tonumber(m_workshop_tbl[m_workshop_index])) then return end handle_workshop_item(m_workshop_tbl, m_workshop_index) end)
 end
 
 local function handle_workshop_table(m_workshop_tbl)
@@ -64,7 +72,7 @@ net.Receive("modern_workshop_network_list", function()
   local m_list_tbl = net.ReadTable()
   if (!m_list_tbl) then return end
   m_workshop_dl_list = m_list_tbl
-  timer.Simple(2, function() handle_workshop_item(m_workshop_dl_list, 0) end)
+  timer.Simple(2, function() handle_workshop_item(m_workshop_dl_list, 1) end)
 end)
 
 local function open_workshop_menu()
