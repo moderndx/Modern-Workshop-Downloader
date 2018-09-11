@@ -8,6 +8,9 @@ https://discord.gg/j9GP6Zz
 # What is it?
 Modern Workshop Downloader allows your players to join your server quickly. It lets them skip the join times and downloads addons ingame while playing.
 
+![image of dl](https://i.imgur.com/b2Riq0e.png)
+
+![image of menu](https://i.imgur.com/2bFAfqG.png)
 
 # Open the admin panel using "open_workshop_admin"
 
