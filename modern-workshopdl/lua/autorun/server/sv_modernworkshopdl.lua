@@ -1,6 +1,7 @@
 util.AddNetworkString("modern_workshop_network_list")
 util.AddNetworkString("modern_workshop_send_id")
 util.AddNetworkString("modern_workshop_update_list")
+util.AddNetworkString("modern_loaded_in_request")
 
 local saved_workshop_list = {}
 
@@ -67,6 +68,10 @@ net.Receive("modern_workshop_send_id", function(len, ply)
   net.Broadcast()
 end)
 
+net.Receive("modern_loaded_in_request", function(len, ply)
+  handle_player(ply)
+end)
+
 net.Receive("modern_workshop_update_list", function(len, ply)
   if (ply:IsAdmin() || ply:IsSuperAdmin()) then
     update_local_workshop_list()
@@ -74,5 +79,3 @@ net.Receive("modern_workshop_update_list", function(len, ply)
 end)
 
 update_local_workshop_list()
-
-hook.Add("PlayerInitialSpawn", "modern_workshop_spawn", handle_player)
