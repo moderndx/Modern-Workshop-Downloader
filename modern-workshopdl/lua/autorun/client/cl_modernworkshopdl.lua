@@ -1,23 +1,32 @@
 local m_workshop_dl_list = {}
 local m_downloaded_list = {}
+local m_cached_list = {}
 local m_current_download_info = {}
 local m_request_launch = false
 
 local function strip_website(m_link)
   if (!m_link) then return false end
   if (tonumber(m_link)) then return m_link end
-  m_link = string.Replace(m_link, "http://", "")
-  m_link = string.Replace(m_link, "https://", "")
-  m_link = string.Replace(m_link, "www.", "")
-  m_link = string.Replace(m_link, "steamcommunity.com", "")
-  m_link = string.Replace(m_link, "/sharedfiles/filedetails/?id=", "")
-  m_link = string.Replace(m_link, "&searchtext=", "")
+  m_link = string.Replace(m_link, "http://steamcommunity.com/workshop/filedetails/?id=", "")
   m_link = string.Replace(m_link, "https://steamcommunity.com/workshop/filedetails/?id=", "")
   return m_link
 end
 
 local function check_if_file_exists(m_workshop_fileid)
   return file.Exists("cache/workshop/"..m_workshop_fileid..".cache", "GAME")
+end
+
+local function skip_mounted_addons(m_workshop_tbl)
+  for k, v in pairs(engine.GetAddons()) do
+    for x, y in pairs(m_workshop_tbl) do
+      if (!y || !tonumber(y)) then continue end
+      if (v.wsid != y) then continue end
+      if (v.mounted) then
+        table.insert(m_downloaded_list, y)
+        table.RemoveByValue(m_workshop_tbl, y)
+      end
+    end
+  end
 end
 
 local function handle_workshop_item(m_workshop_tbl, m_workshop_index)
@@ -36,43 +45,35 @@ local function handle_workshop_item(m_workshop_tbl, m_workshop_index)
         if (!m_result || !istable(m_result)) then return end
         m_current_download_info = m_result
         local m_exists = check_if_file_exists(m_result.fileid)
-        if(!m_exists) then notification.AddProgress( "m_file_download"..m_result.fileid, "Downloading "..m_result.title) end
         file_id = m_result.fileid
+        if(m_exists) then
+          notification.AddProgress( "m_file_download"..m_result.fileid, "Mounting cached addon "..m_result.title)
+          table.insert(m_downloaded_list, m_workshop_tbl[m_workshop_index])
+          game.MountGMA("cache/workshop/"..m_result.fileid..".cache")
+          m_workshop_index = m_workshop_index + 1
+          timer.Simple(2, function() notification.Kill( "m_file_download"..file_id ) file_id = 0 if (!m_workshop_tbl[m_workshop_index] || !tonumber(m_workshop_tbl[m_workshop_index])) then return end handle_workshop_item(m_workshop_tbl, m_workshop_index) end)
+          return
+        end
+
+        notification.AddProgress( "m_file_download"..m_result.fileid, "Downloading "..m_result.title)
+
         steamworks.Download( m_result.fileid, true, function( m_name )
           local succ, err = pcall( function() game.MountGMA( m_name ) end)
           table.insert(m_downloaded_list, m_workshop_tbl[m_workshop_index])
+          m_workshop_index = m_workshop_index + 1
+          timer.Simple(5, function() notification.Kill( "m_file_download"..file_id ) file_id = 0 if (!m_workshop_tbl[m_workshop_index] || !tonumber(m_workshop_tbl[m_workshop_index])) then return end handle_workshop_item(m_workshop_tbl, m_workshop_index) end)
         end)
       end)
     end
   end
-  m_workshop_index = m_workshop_index + 1
-  timer.Simple(2, function() notification.Kill( "m_file_download"..file_id ) file_id = 0 if (!m_workshop_tbl[m_workshop_index] || !tonumber(m_workshop_tbl[m_workshop_index])) then return end handle_workshop_item(m_workshop_tbl, m_workshop_index) end)
-end
-
-local function handle_workshop_table(m_workshop_tbl)
-  for k, v in pairs(m_workshop_tbl) do
-    if (!v || !tonumber(v)) then continue end
-    if (table.HasValue(m_downloaded_list, v)) then continue end
-    steamworks.FileInfo( v, function( m_result )
-      if (!m_result || !istable(m_result)) then return end
-      m_current_download_info = m_result
-      notification.AddProgress( "m_file_download"..m_result.fileid, "Downloading "..m_result.title)
-      steamworks.Download( m_result.fileid, true, function( m_name )
-        local succ, err = pcall( function() game.MountGMA( m_name ) end)
-        notification.Kill( "m_file_download"..m_result.fileid )
-        --if succ then notification.AddLegacy( m_result.title.." finished downloading", NOTIFY_GENERIC, 2 ) else notification.AddLegacy( "Couldn't mount "..v, NOTIFY_GENERIC, 2 ) end
-        table.insert(m_downloaded_list, v)
-      end)
-    end)
-  end
-  m_current_download_info = {}
 end
 
 net.Receive("modern_workshop_network_list", function()
   local m_list_tbl = net.ReadTable()
   if (!m_list_tbl) then return end
   m_workshop_dl_list = m_list_tbl
-  timer.Simple(2, function() handle_workshop_item(m_workshop_dl_list, 1) end)
+  skip_mounted_addons(m_workshop_dl_list)
+  handle_workshop_item(m_workshop_dl_list, 1)
 end)
 
 local function open_workshop_menu()
