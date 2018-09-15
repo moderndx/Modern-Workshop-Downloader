@@ -55,18 +55,18 @@ local function handle_player(ply)
 end
 
 net.Receive("modern_workshop_send_id", function(len, ply)
+  if (ply:IsAdmin() || ply:IsSuperAdmin()) then
   local m_networked_id = net.ReadString()
   if (!tonumber(m_networked_id)) then return end
-  if (ply:IsAdmin() || ply:IsSuperAdmin()) then
     if (net.ReadBool()) then add_to_workshop_list(m_networked_id)
     else remove_from_workshop_list(m_networked_id) end
     update_local_workshop_list()
-  end
   local m_saved_tbl = grab_workshop_table()
   if (!m_saved_tbl) then return end
   net.Start("modern_workshop_network_list")
   net.WriteTable(m_saved_tbl)
   net.Broadcast()
+  end
 end)
 
 net.Receive("modern_loaded_in_request", function(len, ply)
